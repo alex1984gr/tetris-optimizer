@@ -3,12 +3,7 @@ package pipeline
 import "errors"
 
 func CheckFile(lines []string) error {
-	if len(lines) == 0 {
-		return errors.New("empty input")
-	}
-
 	lineIndex := 0
-	hasContent := false
 
 	for lineIndex < len(lines) {
 
@@ -35,7 +30,6 @@ func CheckFile(lines []string) error {
 			}
 		}
 
-		hasContent = true
 		lineIndex += 4
 
 		if lineIndex < len(lines) {
@@ -44,10 +38,6 @@ func CheckFile(lines []string) error {
 			}
 			lineIndex++
 		}
-	}
-
-	if !hasContent {
-		return errors.New("no tetromino data")
 	}
 
 	return nil
