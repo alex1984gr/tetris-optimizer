@@ -11,7 +11,7 @@ func ReadText(filePath string) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer file.close()
+	defer file.Close()
 
 	scanner := bufio.NewScanner(file)
 	var lines []string
