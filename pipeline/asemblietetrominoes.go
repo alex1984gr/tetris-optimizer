@@ -12,7 +12,6 @@ type piece struct {
 	letter rune
 }
 
-// Δημόσια API
 func AsembleTetrominoes(tetrominoes [][]string) ([][]rune, error) {
 	if tetrominoes == nil {
 		return nil, errors.New("nil input")
@@ -32,10 +31,6 @@ func AsembleTetrominoes(tetrominoes [][]string) ([][]rune, error) {
 		size++
 	}
 }
-
-/* =======================
-   Parsing helpers
-======================= */
 
 func parsePieces(tetrominoes [][]string) []piece {
 	var pieces []piece
@@ -77,10 +72,6 @@ func normalize(blocks *[]placedBlock) {
 		(*blocks)[i].col -= minC
 	}
 }
-
-/* =======================
-   Solver
-======================= */
 
 func solve(board [][]rune, pieces []piece, index int) bool {
 	if index == len(pieces) {
@@ -133,10 +124,6 @@ func remove(board [][]rune, p piece, r int, c int) {
 		board[r+b.row][c+b.col] = '.'
 	}
 }
-
-/* =======================
-   Board helpers
-======================= */
 
 func createBoard(size int) [][]rune {
 	board := make([][]rune, size)
