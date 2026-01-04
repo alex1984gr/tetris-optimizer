@@ -2,6 +2,7 @@ package tests
 
 import (
 	"testing"
+	"tetris-optimizer/pipeline"
 )
 
 func TestRecognizeTetrominoes_ValidSquare(t *testing.T) {
@@ -12,7 +13,7 @@ func TestRecognizeTetrominoes_ValidSquare(t *testing.T) {
 		"....",
 	}
 
-	err := RecognizeTetrominoes(tetromino)
+	err := pipeline.RecognizeTetrominoes(tetromino)
 	if err != nil {
 		t.Fatalf("expected valid tetromino, got error: %v", err)
 	}
@@ -26,7 +27,7 @@ func TestRecognizeTetrominoes_ValidLine(t *testing.T) {
 		"....",
 	}
 
-	err := RecognizeTetrominoes(tetromino)
+	err := pipeline.RecognizeTetrominoes(tetromino)
 	if err != nil {
 		t.Fatalf("expected valid line tetromino, got error: %v", err)
 	}
@@ -40,7 +41,7 @@ func TestRecognizeTetrominoes_InvalidCount(t *testing.T) {
 		"....",
 	}
 
-	err := RecognizeTetrominoes(tetromino)
+	err := pipeline.RecognizeTetrominoes(tetromino)
 	if err == nil {
 		t.Fatal("expected error for invalid # count, got nil")
 	}
@@ -54,7 +55,7 @@ func TestRecognizeTetrominoes_DisconnectedBlocks(t *testing.T) {
 		"....",
 	}
 
-	err := RecognizeTetrominoes(tetromino)
+	err := pipeline.RecognizeTetrominoes(tetromino)
 	if err == nil {
 		t.Fatal("expected error for disconnected blocks")
 	}
@@ -68,7 +69,7 @@ func TestRecognizeTetrominoes_DiagonalIsInvalid(t *testing.T) {
 		"...#",
 	}
 
-	err := RecognizeTetrominoes(tetromino)
+	err := pipeline.RecognizeTetrominoes(tetromino)
 	if err == nil {
 		t.Fatal("expected error for diagonal-only connections")
 	}
