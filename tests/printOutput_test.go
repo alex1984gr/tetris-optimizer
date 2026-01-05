@@ -8,6 +8,7 @@ import (
 )
 
 func TestPrintOutput_ValidBoard(t *testing.T) {
+	// Valid 4x4 board with two 2x2 blocks labeled A and B
 	board := [][]rune{
 		{'A', 'A', '.', '.'},
 		{'A', 'A', '.', '.'},
@@ -34,6 +35,7 @@ func TestPrintOutput_ValidBoard(t *testing.T) {
 }
 
 func TestPrintOutput_EmptyBoard(t *testing.T) {
+	// Nil board should produce no output
 	var buf bytes.Buffer
 
 	err := pipeline.PrintOutput(nil, &buf)
@@ -47,6 +49,7 @@ func TestPrintOutput_EmptyBoard(t *testing.T) {
 }
 
 func TestPrintOutput_NilWriter(t *testing.T) {
+	// Passing nil writer should return an error
 	board := [][]rune{
 		{'A'},
 	}

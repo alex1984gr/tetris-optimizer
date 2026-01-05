@@ -23,6 +23,7 @@ func createTempFile(t *testing.T, content string) string {
 }
 
 func TestReadText_ValidFile(t *testing.T) {
+	// A normal file with four lines should be read into a slice of lines
 	content := "....\n....\n....\n....\n"
 	path := createTempFile(t, content)
 
@@ -45,6 +46,7 @@ func TestReadText_ValidFile(t *testing.T) {
 }
 
 func TestReadText_FileDoesNotExist(t *testing.T) {
+	// Reading a non-existent file should return an error
 	_, err := pipeline.ReadText("non_existent_file.txt")
 
 	if err == nil {
@@ -53,6 +55,7 @@ func TestReadText_FileDoesNotExist(t *testing.T) {
 }
 
 func TestReadText_EmptyFile(t *testing.T) {
+	// Empty file should trigger an error
 	path := createTempFile(t, "")
 
 	_, err := pipeline.ReadText(path)
@@ -63,6 +66,7 @@ func TestReadText_EmptyFile(t *testing.T) {
 }
 
 func TestReadText_OnlyNewLines(t *testing.T) {
+	// File containing only blank lines should return empty-string entries
 	path := createTempFile(t, "\n\n\n")
 
 	lines, err := pipeline.ReadText(path)
@@ -78,6 +82,7 @@ func TestReadText_OnlyNewLines(t *testing.T) {
 }
 
 func TestReadText_TrailingNewLineAllowed(t *testing.T) {
+	// Trailing newline should not create an extra empty element at end
 	content := "....\n....\n"
 	path := createTempFile(t, content)
 
@@ -98,6 +103,7 @@ func TestReadText_TrailingNewLineAllowed(t *testing.T) {
 }
 
 func TestReadText_WhitespacePreserved(t *testing.T) {
+	// Whitespace and characters on lines should be preserved as-is
 	content := "....\n..#.\n"
 	path := createTempFile(t, content)
 
@@ -117,6 +123,7 @@ func TestReadText_WhitespacePreserved(t *testing.T) {
 }
 
 func TestReadText_UnicodeCharactersAllowed(t *testing.T) {
+	// Unicode characters in lines should be handled without error
 	content := "αβγδ\n####\n"
 	path := createTempFile(t, content)
 
