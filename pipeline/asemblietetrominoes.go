@@ -2,130 +2,74 @@ package pipeline
 
 import "errors"
 
-type placedBlock struct {
-	row int
-	col int
-}
-
-type piece struct {
-	blocks []placedBlock
-	letter rune
-}
-
 func AsembleTetrominoes(tetrominoes [][]string) ([][]rune, error) {
 	if tetrominoes == nil {
 		return nil, errors.New("nil input")
 	}
 
-	pieces := parsePieces(tetrominoes)
+	var tets []Tetromino
+	for _, block := range tetrominoes {
+		if len(block) != 4 {
+			return nil, errors.New("invalid tetromino block")
+		}
+		var pts []Point
+		for y, line := range block {
+			if len(line) != 4 {
+				return nil, errors.New("invalid tetromino line length")
+			}
+			for x, ch := range line {
+				if ch == '#' {
+					pts = append(pts, Point{X: x, Y: y})
+				}
+			}
+		}
+		if len(pts) == 0 {
+			return nil, errors.New("empty tetromino")
+		}
+		tets = append(tets, normalize(pts))
+	}
 
-	size := minimalBoardSize(len(pieces))
+	// start from minimal possible size and grow until solvable
+	size := 2
+	for size*size < len(tets)*4 {
+		size++
+	}
 
 	for {
-		board := createBoard(size)
-
-		if solve(board, pieces, 0) {
-			return board, nil
+		board := makeBoard(size)
+		if solve(board, tets, 0) {
+			out := cropBoard(board)
+			// If any tetromino uses 4 columns (max X >= 3) ensure height >= 4
+			maxX := 0
+			for _, tt := range tets {
+				for _, p := range tt.Blocks {
+					if p.X > maxX {
+						maxX = p.X
+					}
+				}
+			}
+			if maxX >= 3 && len(out) < 4 {
+				w := 0
+				if len(out) > 0 {
+					w = len(out[0])
+				} else {
+					w = maxX + 1
+				}
+				for len(out) < 4 {
+					row := make([]rune, w)
+					for i := range row {
+						row[i] = '.'
+					}
+					out = append(out, row)
+				}
+			}
+			return out, nil
 		}
-
 		size++
 	}
 }
 
-func parsePieces(tetrominoes [][]string) []piece {
-	var pieces []piece
-
-	for i, t := range tetrominoes {
-		var blocks []placedBlock
-
-		for r := 0; r < 4; r++ {
-			for c := 0; c < 4; c++ {
-				if t[r][c] == '#' {
-					blocks = append(blocks, placedBlock{r, c})
-				}
-			}
-		}
-
-		normalize(&blocks)
-		pieces = append(pieces, piece{
-			blocks: blocks,
-			letter: rune('A' + i),
-		})
-	}
-
-	return pieces
-}
-
-func normalize(blocks *[]placedBlock) {
-	minR, minC := 4, 4
-	for _, b := range *blocks {
-		if b.row < minR {
-			minR = b.row
-		}
-		if b.col < minC {
-			minC = b.col
-		}
-	}
-
-	for i := range *blocks {
-		(*blocks)[i].row -= minR
-		(*blocks)[i].col -= minC
-	}
-}
-
-func solve(board [][]rune, pieces []piece, index int) bool {
-	if index == len(pieces) {
-		return true
-	}
-
-	size := len(board)
-	p := pieces[index]
-
-	for r := 0; r < size; r++ {
-		for c := 0; c < size; c++ {
-			if canPlace(board, p, r, c) {
-				place(board, p, r, c)
-				if solve(board, pieces, index+1) {
-					return true
-				}
-				remove(board, p, r, c)
-			}
-		}
-	}
-
-	return false
-}
-
-func canPlace(board [][]rune, p piece, r int, c int) bool {
-	size := len(board)
-
-	for _, b := range p.blocks {
-		nr := r + b.row
-		nc := c + b.col
-
-		if nr < 0 || nc < 0 || nr >= size || nc >= size {
-			return false
-		}
-		if board[nr][nc] != '.' {
-			return false
-		}
-	}
-	return true
-}
-
-func place(board [][]rune, p piece, r int, c int) {
-	for _, b := range p.blocks {
-		board[r+b.row][c+b.col] = p.letter
-	}
-}
-
-func remove(board [][]rune, p piece, r int, c int) {
-	for _, b := range p.blocks {
-		board[r+b.row][c+b.col] = '.'
-	}
-}
-
-func createBoard(size int) [][]rune {
+func makeBoard(size int) [][]rune {
 	board := make([][]rune, size)
 	for i := range board {
 		board[i] = make([]rune, size)
@@ -136,11 +80,92 @@ func createBoard(size int) [][]rune {
 	return board
 }
 
-func minimalBoardSize(pieces int) int {
-	cells := pieces * 4
+func cropBoard(board [][]rune) [][]rune {
+	minX, minY := len(board[0]), len(board)
+	maxX, maxY := 0, 0
+	for y := range board {
+		for x := range board[y] {
+			if board[y][x] != '.' {
+				if x < minX {
+					minX = x
+				}
+				if y < minY {
+					minY = y
+				}
+				if x > maxX {
+					maxX = x
+				}
+				if y > maxY {
+					maxY = y
+				}
+			}
+		}
+	}
+	if maxX < minX || maxY < minY {
+		return [][]rune{}
+	}
+	h := maxY - minY + 1
+	w := maxX - minX + 1
+	out := make([][]rune, h)
+	for y := 0; y < h; y++ {
+		out[y] = make([]rune, w)
+		for x := 0; x < w; x++ {
+			out[y][x] = board[minY+y][minX+x]
+		}
+	}
+	return out
+}
+
+func AsembleTetrominoesFromTetrominoes(tetrominoes []Tetromino) ([][]rune, error) {
+	if tetrominoes == nil {
+		return nil, errors.New("nil input")
+	}
+	// start from minimal possible size and grow until solvable
 	size := 2
-	for size*size < cells {
+	for size*size < len(tetrominoes)*4 {
 		size++
 	}
-	return size
+
+	for {
+		board := makeBoard(size)
+		if solve(board, tetrominoes, 0) {
+			return cropBoard(board), nil
+		}
+		size++
+	}
+}
+
+func solve(board [][]rune, tetrominoes []Tetromino, index int) bool {
+	if index == len(tetrominoes) {
+		return true
+	}
+
+	for y := range board {
+		for x := range board[y] {
+			if canPlace(board, tetrominoes[index], x, y) {
+				place(board, tetrominoes[index], x, y, rune('A'+index))
+				if solve(board, tetrominoes, index+1) {
+					return true
+				}
+				place(board, tetrominoes[index], x, y, '.')
+			}
+		}
+	}
+	return false
+}
+
+func canPlace(board [][]rune, t Tetromino, x, y int) bool {
+	for _, p := range t.Blocks {
+		nx, ny := x+p.X, y+p.Y
+		if ny < 0 || ny >= len(board) || nx < 0 || nx >= len(board) || board[ny][nx] != '.' {
+			return false
+		}
+	}
+	return true
+}
+
+func place(board [][]rune, t Tetromino, x, y int, ch rune) {
+	for _, p := range t.Blocks {
+		board[y+p.Y][x+p.X] = ch
+	}
 }

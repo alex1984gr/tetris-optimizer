@@ -1,33 +1,39 @@
 package pipeline
 
 import (
-	"errors"
-	"io"
+	"errors" // for error creation
+	"io"     // io.Writer type
 )
 
-// PrintOutput prints the final tetromino board to the given writer.
+// PrintOutput writes the board rows to the provided io.Writer, one line per row.
 func PrintOutput(board [][]rune, w io.Writer) error {
+	// writer must be provided
 	if w == nil {
-		return errors.New("writer is nil")
+		return errors.New("nil writer")
 	}
-
-	if len(board) == 0 {
+	// nil board means nothing to print
+	if board == nil {
 		return nil
 	}
-
+	// write each row as a string followed by newline
 	for _, row := range board {
-		for _, cell := range row {
-			_, err := w.Write([]byte(string(cell)))
+		if len(row) == 0 {
+			_, err := w.Write([]byte("\n"))
 			if err != nil {
 				return err
 			}
+			continue
 		}
-
-		_, err := w.Write([]byte("\n"))
+		// convert rune slice to string and write
+		_, err := w.Write([]byte(string(row)))
+		if err != nil {
+			return err
+		}
+		// write newline after the row
+		_, err = w.Write([]byte("\n"))
 		if err != nil {
 			return err
 		}
 	}
-
 	return nil
 }
