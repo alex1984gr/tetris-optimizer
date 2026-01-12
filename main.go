@@ -30,7 +30,7 @@ func main() {
 	}
 
 	// parse the entire file into normalized Tetromino structs
-	tetrominoes, err := pipeline.RecognizeAllTetrominoes(lines)
+	tetrominoes, err := pipeline.RecognizeAllTetrominoes(lines, true)
 	if err != nil {
 		fmt.Println("ERROR")
 		return
