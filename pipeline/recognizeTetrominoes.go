@@ -1,117 +1,182 @@
 package pipeline
 
-// Point holds X,Y coordinates for a single block within a tetromino.
+// Point represents the X,Y coordinates of a single block ('#')
+// inside a tetromino grid.
 type Point struct {
 	X int // column index
 	Y int // row index
 }
 
-// Tetromino is a normalized shape represented by its block points.
+// Tetromino represents a normalized tetromino shape.
+// All blocks are shifted so the top-left block starts at (0,0).
 type Tetromino struct {
-	Blocks []Point // list of block coordinates relative to (0,0)
+	Blocks []Point
 }
 
-// RecognizeAllTetrominoes parses full-file lines separated by empty lines
-// and returns all normalized Tetromino structs found.
-func RecognizeAllTetrominoes(lines []string) []Tetromino {
-	var tetrominoes []Tetromino
-	var current []Point // collected points for the current tetromino
+// ErrInvalidTetromino is returned when a tetromino
+// does not satisfy validation rules.
+type ErrInvalidTetromino struct {
+	Msg string
+}
 
-	row := 0 // row index within the current tetromino block
+// Error implements the built-in error interface.
+func (e *ErrInvalidTetromino) Error() string {
+	return e.Msg
+}
+
+// RecognizeAllTetrominoes parses all file lines, separates tetrominoes
+// by empty lines, validates them if strict mode is enabled,
+// and returns a slice of normalized Tetromino structs.
+func RecognizeAllTetrominoes(lines []string, strict bool) ([]Tetromino, error) {
+	var tetrominoes []Tetromino // final result
+	var currentLines []string   // lines for the current tetromino
+
+	// Iterate over every line in the file
 	for _, line := range lines {
-		// empty line separates tetrominoes
+
+		// An empty line separates tetrominoes
 		if line == "" {
-			if len(current) > 0 {
-				tetrominoes = append(tetrominoes, normalize(current))
-				current = nil
-				row = 0
+			// If we have collected lines for a tetromino
+			if len(currentLines) > 0 {
+
+				// In strict mode, validate the tetromino
+				if strict {
+					if err := RecognizeTetrominoes(currentLines); err != nil {
+						return nil, err
+					}
+				}
+
+				// Parse and normalize the tetromino
+				tetrominoes = append(tetrominoes, parseAndNormalize(currentLines))
+				currentLines = nil // reset for the next tetromino
 			}
 			continue
 		}
 
-		// record '#' positions in the current row
-		for col, ch := range line {
-			if ch == '#' {
-				current = append(current, Point{X: col, Y: row})
+		// Non-empty lines belong to the current tetromino
+		currentLines = append(currentLines, line)
+	}
+
+	// Handle the last tetromino if file does not end with an empty line
+	if len(currentLines) > 0 {
+
+		if strict {
+			if err := RecognizeTetrominoes(currentLines); err != nil {
+				return nil, err
 			}
 		}
-		row++
+
+		tetrominoes = append(tetrominoes, parseAndNormalize(currentLines))
 	}
 
-	// append final tetromino if file didn't end with empty line
-	if len(current) > 0 {
-		tetrominoes = append(tetrominoes, normalize(current))
-	}
-
-	return tetrominoes
+	return tetrominoes, nil
 }
 
-// RecognizeTetrominoes validates a single tetromino (4 lines) and returns
-// an error describing problems, or nil on success. This matches tests.
+// RecognizeTetrominoes validates a single tetromino.
+// It checks dimensions, block count, and connectivity.
 func RecognizeTetrominoes(lines []string) error {
-	// must be exactly 4 lines
+
+	// A tetromino must be exactly 4 lines tall
 	if len(lines) != 4 {
-		return &ErrInvalidTetromino{Msg: "must be 4 lines"}
+		return &ErrInvalidTetromino{Msg: "must be exactly 4 lines"}
 	}
-	var pts []Point
+
+	var blocks []Point // stores positions of all '#' blocks
+
+	// Iterate through each row
 	for y, line := range lines {
-		// each line must be 4 chars wide
+
+		// Each line must be exactly 4 characters wide
 		if len(line) != 4 {
-			return &ErrInvalidTetromino{Msg: "line length must be 4"}
+			return &ErrInvalidTetromino{Msg: "each line must be 4 characters wide"}
 		}
+
+		// Iterate through characters in the line
 		for x, ch := range line {
 			if ch == '#' {
-				pts = append(pts, Point{X: x, Y: y})
+				blocks = append(blocks, Point{X: x, Y: y})
 			}
 		}
 	}
-	// exactly 4 blocks required for a tetromino
-	if len(pts) != 4 {
-		return &ErrInvalidTetromino{Msg: "must contain exactly 4 blocks"}
+
+	// A valid tetromino must contain exactly 4 blocks
+	if len(blocks) != 4 {
+		return &ErrInvalidTetromino{Msg: "tetromino must contain exactly 4 blocks"}
 	}
-	// check connectivity: perform a simple DFS/BFS from first block
-	seen := map[Point]bool{}
-	stack := []Point{pts[0]}
-	seen[pts[0]] = true
+
+	// Connectivity check using DFS (only orthogonal neighbors)
+	visited := map[Point]bool{}
+	stack := []Point{blocks[0]}
+	visited[blocks[0]] = true
+
+	// Depth-first search
 	for len(stack) > 0 {
 		p := stack[len(stack)-1]
 		stack = stack[:len(stack)-1]
-		// orthogonal neighbors
-		neighbors := []Point{{p.X + 1, p.Y}, {p.X - 1, p.Y}, {p.X, p.Y + 1}, {p.X, p.Y - 1}}
+
+		// Possible neighbors (up, down, left, right)
+		neighbors := []Point{
+			{p.X + 1, p.Y},
+			{p.X - 1, p.Y},
+			{p.X, p.Y + 1},
+			{p.X, p.Y - 1},
+		}
+
+		// Check if neighbors exist in the block list
 		for _, n := range neighbors {
-			for _, q := range pts {
-				if q == n && !seen[q] {
-					seen[q] = true
-					stack = append(stack, q)
+			for _, b := range blocks {
+				if b == n && !visited[b] {
+					visited[b] = true
+					stack = append(stack, b)
 				}
 			}
 		}
 	}
-	// all 4 blocks must be reachable
-	if len(seen) != 4 {
+
+	// All 4 blocks must be connected
+	if len(visited) != 4 {
 		return &ErrInvalidTetromino{Msg: "blocks are not connected"}
 	}
+
 	return nil
 }
 
-// ErrInvalidTetromino is returned when a tetromino fails validation.
-type ErrInvalidTetromino struct{ Msg string }
+// parseAndNormalize converts raw tetromino lines into
+// a normalized Tetromino struct.
+func parseAndNormalize(lines []string) Tetromino {
+	var blocks []Point
 
-func (e *ErrInvalidTetromino) Error() string { return e.Msg }
-
-// normalize shifts all points so minimum X and Y become 0, returning a Tetromino.
-func normalize(blocks []Point) Tetromino {
-	minX, minY := blocks[0].X, blocks[0].Y
-
-	for _, p := range blocks {
-		if p.X < minX {
-			minX = p.X
-		}
-		if p.Y < minY {
-			minY = p.Y
+	// Collect all '#' block positions
+	for y, line := range lines {
+		for x, ch := range line {
+			if ch == '#' {
+				blocks = append(blocks, Point{X: x, Y: y})
+			}
 		}
 	}
 
+	return normalize(blocks)
+}
+
+// normalize shifts all block coordinates so that
+// the minimum X and Y values become 0.
+func normalize(blocks []Point) Tetromino {
+
+	// Initialize minimum coordinates
+	minX := blocks[0].X
+	minY := blocks[0].Y
+
+	// Find the minimum X and Y among all blocks
+	for _, b := range blocks {
+		if b.X < minX {
+			minX = b.X
+		}
+		if b.Y < minY {
+			minY = b.Y
+		}
+	}
+
+	// Shift all blocks relative to (0,0)
 	for i := range blocks {
 		blocks[i].X -= minX
 		blocks[i].Y -= minY
